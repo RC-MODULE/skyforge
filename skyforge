@@ -1,0 +1,275 @@
+#!/bin/bash
+
+PREVIOUS=
+CURRENT=
+
+CURRENT_STEP=0
+SAVE_STEPS=0
+WORKDIR=.forge
+DRY_RUN=0
+NEED_RESTORE=0
+RERUN_FOLLOWING=0
+
+skyforge_init()
+{
+  [ -d $WORKDIR ] || mkdir -p $WORKDIR
+
+  if [ -f $WORKDIR/.save_steps ]; then
+    SAVE_STEPS=`cat $WORKDIR/.save_steps`
+  fi
+
+  if [ "$SAVE_STEPS" -eq "1" ]; then
+    echo "[W] SkyForge will tarball state on each state. This will require a lot of space"
+  fi
+}
+
+skyforge_hash()
+{
+  PREVIOUS="$CURRENT"
+  CURRENT=`echo "${CURRENT}.$*" | md5sum | cut -d" " -f1`
+}
+
+skyforge_cleanup()
+{
+
+#Not the most optimal, but gets the job done
+  echo "Reading skyfile tree"
+  for hash in `ls $WORKDIR|grep -v tgz`; do
+    CURHASH=$hash
+    DRY_RUN=1
+    HASH_FOUND="`skyforge_run_skyfile $1`"
+    if [ "$HASH_FOUND" == "KEEP" ]; then
+        echo "Keeping $WORKDIR/$hash"
+    else
+        echo "Deleting $WORKDIR/$hash"
+        rm -f $WORKDIR/$hash*
+    fi
+  done
+  echo "Cleanup complete"
+  echo "-------------"
+  unset CURHASH
+  DRY_RUN=0
+}
+
+skyforge_kill_chroot_processes()
+{
+  PREFIX=`cd rootfs && pwd`
+  FOUND=0
+
+  for ROOT in /proc/*/root; do
+      LINK=$(readlink $ROOT)
+      if [ "x$LINK" != "x" ]; then
+          if [ "x${LINK:0:${#PREFIX}}" = "x$PREFIX" ]; then
+              # this process is in the chroot...
+              PID=$(basename $(dirname "$ROOT"))
+              echo "Killing PID $PID"
+              kill -9 "$PID"
+              FOUND=1
+          fi
+      fi
+  done
+  if [ "x$FOUND" == "x1" ]; then
+    skyforge_kill_chroot_processes
+  fi
+}
+
+skyforge_bind_mount()
+{
+  mount -o bind /proc/ ./rootfs/proc/
+	mount -o bind /sys/  ./rootfs/sys/
+	mount -o bind /dev/  ./rootfs/dev/
+}
+
+skyforge_bind_unmount()
+{
+  umount ./rootfs/proc/
+  umount ./rootfs/sys/
+  umount ./rootfs/dev/
+}
+
+skyforge_delete_rootfs()
+{
+  skyforge_kill_chroot_processes
+  skyforge_bind_unmount
+  rm -Rf rootfs
+}
+
+skyforge_restore_rootfs()
+{
+  echo "Restoring rootfs from snapshot: $1"
+  skyforge_delete_rootfs
+  tar xpf $WORKDIR/$1.tgz
+}
+
+skyforge_execute_step()
+{
+  skyforge_hash "$*"
+
+  if [ ! -z $CURHASH ]; then
+    if [ "$CURHASH" == "$CURRENT" ]; then
+        echo -n "KEEP"
+    fi
+    return 0;
+  fi
+
+  if [ -f $WORKDIR/$CURRENT ] && [ "$RERUN_FOLLOWING" -ne "1" ]; then
+    echo "[S] $CURRENT | $* "
+    NEED_RESTORE=1
+    return 0;
+  fi
+
+  echo "[R] $CURRENT | $*"
+  RERUN_FOLLOWING=1
+
+  if [ "$DRY_RUN" -eq "1" ]; then
+    return 0
+  fi
+
+  if [ "$NEED_RESTORE" -eq "1" ]; then
+    skyforge_restore_rootfs $PREVIOUS
+    NEED_RESTORE=0
+  fi
+
+  eval "$*"
+
+  if [ "$?" -eq "0" ]; then
+    echo "[~] Now at $CURRENT"
+    touch $WORKDIR/$CURRENT
+    if [ "$SAVE_STEPS" -eq "1" ]; then
+      tar cpzf $WORKDIR/$CURRENT.tgz rootfs
+      echo "[~] Saved state to $WORKDIR/$CURRENT.tgz"
+    fi
+  else
+    echo "[!] Oops, step $CURRENT failed"
+    exit 1
+  fi
+
+}
+
+skyforge_run_skyfile()
+{
+  cat $1| grep -v '^$' | grep -v '^#' | sed "s/'/\\'/g" | \
+    while IFS= read line; do
+    skyforge_execute_step "$line"
+  done
+}
+
+MULTISTRAP()
+{
+    multistrap -d rootfs -a ${1} -f ${2}
+}
+
+RUN()
+{
+  skyforge_bind_mount
+  echo "$*" | chroot rootfs
+  skyforge_kill_chroot_processes
+  skyforge_bind_unmount
+}
+
+INSTALL()
+{
+  cp $1 rootfs/$1
+}
+
+REMOVE()
+{
+  rm -f rootfs/$1
+}
+
+STORE()
+{
+  tar cpzf $1 -C rootfs .
+}
+
+PASSWD()
+{
+  RUN "echo -e '$1\n$1' | passwd root"
+}
+
+HOSTNAME()
+{
+    RUN "echo \"$1\" > /etc/hostname"
+}
+
+LOCALE()
+{
+  RUN "echo \"$*\" >> /etc/locale.gen"
+  RUN locale-gen
+}
+
+IFACE_STATIC()
+{
+  RUN "echo auto $1 > /etc/network/interfaces.d/$1"
+  RUN "echo iface $1 inet static >> /etc/network/interfaces.d/$1"
+  RUN "echo   address $2 >> /etc/network/interfaces.d/$1"
+  RUN "echo   netmask $3 >> /etc/network/interfaces.d/$1"
+  RUN "echo   gateway $4 >> /etc/network/interfaces.d/$1"
+}
+
+IFACE_DHCP()
+{
+  RUN "echo auto $1 > /etc/network/interfaces.d/$1"
+  RUN "echo iface $1 inet dhcp >> /etc/network/interfaces.d/$1"
+}
+
+APT_KEY()
+{
+  RUN wget -O- $1 \| apt-key add -
+}
+
+usage()
+{
+  echo "SkyForge Firmware Builder v 0.1 (c) Andrew 'Necromant' Andrianov 2016"
+  echo "Usage: $1 command"
+  echo "Commands: "
+  echo "  build          - build rootfs from Skyfile in current directory"
+  echo "  clean          - Clean state unreferenced state files from .forge"
+  echo "  purge          - Remove all stuff created by skyforge"
+  echo "  devmode        - Developer mode: Save tgz snapshots for every step"
+  echo "  status         - Print current steps and their status"
+  echo "  replay hash    - Replay all actions starting with the one with specified hash"
+  exit 1
+}
+
+if [ `whoami` != "root" ]; then
+  echo "Sorry, you should run this tool as root"
+  echo "Using a disposable environment (docker) is highly recommended"
+  exit 1
+fi
+
+if [ "$#" -eq "0" ]; then
+  usage $0
+fi
+
+skyforge_init
+case "$1" in
+  clean)
+    skyforge_cleanup Skyfile
+    echo "Cleanup complete"
+  ;;
+  build)
+    skyforge_cleanup Skyfile
+    skyforge_run_skyfile Skyfile
+    echo "Your rootfs is now forged!"
+  ;;
+  purge)
+    rm -Rf .forge
+    rm -Rf rootfs
+    echo "Everything's been purged"
+  ;;
+  devmode)
+    echo 1 > $WORKDIR/.save_steps
+    echo "Development mode enabled. Each step will be tarballed"
+  ;;
+  status)
+    DRY_RUN=1
+    skyforge_run_skyfile Skyfile
+    ;;
+  replay)
+    rm -f ${WORKDIR}/${2}*
+    ;;
+  *)
+    usage $1
+  ;;
+esac
