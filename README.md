@@ -188,7 +188,21 @@ Add an apt gpg key into the target rootfs
 ```
 APT_KEY http://www.module.ru/mb7707/repo/repository.gpg
 ```
+## SH command
 
+Just run a shell command in this directory.
+You can omit SH and it will still work the same. Magic!
+
+```
+SH ls rootfs/
+```
+and
+
+```
+ls rootfs/
+```
+
+are essentially the same
 
 # A complete Skyfile Example
 

@@ -167,6 +167,11 @@ RUN()
   skyforge_bind_unmount
 }
 
+SH()
+{
+  $*
+}
+
 INSTALL()
 {
   cp $1 rootfs/$1
@@ -217,6 +222,7 @@ APT_KEY()
 {
   RUN wget -O- $1 \| apt-key add -
 }
+
 
 usage()
 {
