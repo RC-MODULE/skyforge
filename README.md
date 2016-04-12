@@ -166,6 +166,37 @@ e.g. IFACE_DHCP eth0
 
 Add an apt gpg key into the target rootfs
 
+# A complete Skyfile Example
+
+```
+#The basic multistrap stuff
+MULTISTRAP armel debian-devel.conf
+INSTALL /usr/bin/qemu-arm-static
+RUN DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true LC_ALL=C LANGUAGE=C LANG=C /var/lib/dpkg/info/dash.preinst install
+RUN DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true LC_ALL=C LANGUAGE=C LANG=C dpkg --configure -a
+
+#Install a proper resolv.conf
+INSTALL /etc/resolv.conf
+
+#Install RCM Repository GPG Key
+APT_KEY http://www.module.ru/mb7707/repo/repository.gpg
+
+#Basic system setup
+PASSWD 12345678
+HOSTNAME shade
+LOCALE en_US.UTF8 UTF8
+IFACE_STATIC eth0 192.168.20.9 255.255.255.0 192.168.20.1 8.8.8.8
+#IFACE_DHCP eth0
+
+#Enable root access over ssh
+RUN sed "'s/PermitRootLogin without-password/PermitRootLogin yes/'" -i /etc/ssh/sshd_config
+
+#Force SSH to generate host keys at boot
+REMOVE /etc/ssh/ssh_host_*
+REMOVE /etc/resolv.conf
+
+STORE rootfs.tgz
+```
 
 # TODO
 
