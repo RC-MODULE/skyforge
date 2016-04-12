@@ -104,67 +104,91 @@ skyforge replay b1fabddf2afd249fc0a6cb6197ce3e6b
 
 Runs multistrap with the supplied debarch (e.g. armel) using the config file supplied. Should be the first command to run
 
-e.g. MULTISTRAP armel debian-armel.conf
+```
+MULTISTRAP armel debian-armel.conf
+```
 
 ## INSTALL filename
 
 Copies a file from host operating system to target
 
-e.g. INSTALL /etc/resolv.conf
+```
+INSTALL /etc/resolv.conf
+```
 
 ##RUN command
 
 Runs a command in chrooted environment. If you have a cross-chroot you should've
 copied corresponding qemu static binary there beforehand
 
-e.g. RUN uname -a
+```
+RUN uname -a
+```
 
 ##REMOVE filename
 
 Delete a file from target root filesystem
 
-e.g. DELETE /etc/resolv.conf
-
+```
+DELETE /etc/resolv.conf
+```
 
 ##STORE filename
 
 Tarball the root filesystem into the archive filename
 
-e.g. STORE rootfs.tar.gz
+```
+STORE rootfs.tar.gz
+```
 
 ##PASSWD
 
 Setup root password on the target system.
 
-e.g. PASSWD 12345678
+```
+PASSWD 12345678
+```
 
 ##HOSTNAME
 
 Setup hostname on the target root filesystem
 
-e.g. HOSTNAME iltharia
+```
+HOSTNAME iltharia
+```
 
 ##LOCALE
 
 Add locale to /etc/locale.gen and generate locales on the target
 
-e.g. LOCALE en_US.UTF8 UTF8
+```
+LOCALE en_US.UTF8 UTF8
+```
 
 ##IFACE_STATIC iface ip netmask gateway
 
 Configure ethernet interface parameters (static IP)
 
-e.g. IFACE_STATIC eth0 192.168.20.9 255.255.255.0 192.168.20.1 8.8.8.8
+```
+IFACE_STATIC eth0 192.168.20.9 255.255.255.0 192.168.20.1 8.8.8.8
+```
 
 ##IFACE_DHCP iface
 
 Configure ethernet interface with DHCP
 
-e.g. IFACE_DHCP eth0
+```
+IFACE_DHCP eth0
+```
 
 ##APT_KEY url
 
 Add an apt gpg key into the target rootfs
+
+```
+APT_KEY http://www.module.ru/mb7707/repo/repository.gpg
+```
+
 
 # A complete Skyfile Example
 
