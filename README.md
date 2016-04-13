@@ -3,10 +3,16 @@
 SkyForge is a high-level tool to create ready to boot debian root filesystems
 using a simple Dockerfile-inspired syntax.
 
-It uses multistrap and it's own configuration file called Skyfile to create a rootfs tarball
+It uses multistrap to create a basic system and it's own configuration file called Skyfile to create a rootfs tarball
 
 SkyForge assigns a hash to each of the steps it executes. If you are developing
-your Skyfile and rerun the build only the actual commands that have changed will be re-run, thus saving your time and bandwidth.
+your Skyfile and rerun the build only the actual commands that have changed will be re-run, thus saving you time and bandwidth. What's more skyforge captures the state of the rootfs at each step and makes sure that each command will be run exactly with the same rootfs as if the build had been started from scratch.
+
+SkyForge uses OverlayFS for fast snapshots. If you don't have OverlayFS, you can instruct SkyForge to tarball each and every state of the rootfs being made. Result will be roughly the same, but snapshots will consume a lot of time and disk space. See
+
+```
+skyforge tarball
+```
 
 # Installation
 
@@ -28,15 +34,18 @@ Build rootfs from Skyfile in current directory.
 skyforge build
 ```
 
-WARNING: The default behavior is to NOT store snapshots for each line of Skyfile
-if you want developer mode - run
+If you don't have OverlayFS building will not store snapshots on each step. If you don't have OverlayFS in your kernel but still want the snapshot feature run
+
 
 ```
-skyforge devmode
+skyforge tarball
 skyforge build
 ```
 
-## Clean
+## tarball
+Enables tarballing of each of the steps run. This will persist until you run 'skyforge purge'. See 'build' section for more
+
+## clean
 
 Remove old snapshots from working directory (.forge) and leave only those
 actually present in the Skyfile
@@ -52,6 +61,10 @@ run it manually
 
 Remove all intermediate junk created by Skyforge.
 Equivalent of running rm -Rf .forge
+
+## mount
+
+When running with OverlayFS available this command mounts the rootfs/ at the last snapshot and prints out history like 'status' does
 
 ## status
 

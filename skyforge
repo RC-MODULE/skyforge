@@ -14,6 +14,8 @@ CLEANUP=
 skyforge_init()
 {
   [ -d $WORKDIR ] || mkdir -p $WORKDIR
+  [ -d $WORKDIR/.bottom ] || mkdir -p $WORKDIR/.bottom
+  echo "$WORKDIR/.bottom" > $WORKDIR/.stack
 
   if [ -f $WORKDIR/.save_steps ]; then
     SAVE_STEPS=`cat $WORKDIR/.save_steps`
@@ -22,6 +24,19 @@ skyforge_init()
   if [ "$SAVE_STEPS" -eq "1" ]; then
     echo "[W] SkyForge will tarball state on each state. This will require a lot of space"
   fi
+
+  skyforge_check_overlayfs
+  if [ "$?" != "0" ]; then
+    echo "[W] No OverlayFS support in current kernel. Fast snapshots unavailable. Read docs"
+    return 0
+  fi
+
+}
+
+skyforge_check_overlayfs()
+{
+  [ "`grep overlay /proc/filesystems |wc -l`" != "1" ] && return 1
+  return 0
 }
 
 skyforge_hash()
@@ -43,7 +58,7 @@ skyforge_cleanup()
         echo "Keeping $WORKDIR/$hash"
     else
         echo "Deleting $WORKDIR/$hash"
-        rm -f $WORKDIR/$hash*
+        rm -rf $WORKDIR/$hash*
     fi
   done
   echo "Initial cleanup complete"
@@ -105,10 +120,49 @@ skyforge_restore_rootfs()
   tar xpf $WORKDIR/$1.tgz
 }
 
+skyforge_directory_is_mountpoint()
+{
+  [ -d $1 ] || return 2
+  DIR=`cd $1 && pwd`
+  [ "`stat --format=%m $DIR`" == "$DIR" ] && return 0
+  return 1
+}
+
+skyforge_overlay_add_layer()
+{
+  skyforge_directory_is_mountpoint rootfs
+
+  if [ "$?" == "0" ]; then
+    umount rootfs
+  fi
+
+  skyforge_check_overlayfs
+
+  if [ "$?" != "0" ]; then
+  #No overlayfs? Bail out!
+    return 0
+  fi
+
+  [ ! -d rootfs ] && mkdir -p rootfs
+
+  STACK="`cat $WORKDIR/.stack`"
+  if [ "$PREVIOUS" != "" ]; then
+    STACK="$WORKDIR/.$PREVIOUS.data:$STACK"
+  fi
+
+  echo "$STACK" > $WORKDIR/.stack
+  mkdir -p $WORKDIR/.work
+  mkdir -p $WORKDIR/.$CURRENT.data
+  mount -t overlay overlay -o \
+  lowerdir=$STACK,upperdir=$WORKDIR/.$CURRENT.data,workdir=$WORKDIR/.work \
+  rootfs
+}
+
 skyforge_execute_step()
 {
   skyforge_hash "$*"
 
+  #If we're only checking if this hash exists
   if [ ! -z $CURHASH ]; then
     if [ "$CURHASH" == "$CURRENT" ]; then
         echo -n "KEEP"
@@ -116,9 +170,12 @@ skyforge_execute_step()
     return 0;
   fi
 
+  #Status output. Should we skip this step?
   if [ -f $WORKDIR/$CURRENT ] && [ "$RERUN_FOLLOWING" -ne "1" ]; then
     echo "[S] $CURRENT | $* "
     NEED_RESTORE=1
+    #Make sure to add it as overlay before bailing out
+    skyforge_overlay_add_layer $CURRENT
     return 0;
   fi
 
@@ -129,7 +186,11 @@ skyforge_execute_step()
     return 0
   fi
 
-  if [ "$NEED_RESTORE" -eq "1" ]; then
+  #Add a fresh overlay
+  skyforge_overlay_add_layer $CURRENT
+
+  #Or restore from a tarball if we're in dumb environment
+  if [ "$NEED_RESTORE" -eq "1" ] && [ "$SAVE_STEPS" -eq "1" ]; then
     skyforge_restore_rootfs $PREVIOUS
     NEED_RESTORE=0
   fi
@@ -249,14 +310,14 @@ SYMLINK2COPY()
         abstarget=$dir/$reltarget
     fi
 
-    rm -fv "$link"
+    rm -f "$link"
     cp -af "$abstarget" "$link" || {
         # on failure, restore the symlink
         rm -rfv "$link"
         ln -sfv "$reltarget" "$link"
     }
-done
-    cd ..
+  done
+  cd ..
 }
 
 ADD()
@@ -272,9 +333,10 @@ usage()
   echo "  build          - build rootfs from Skyfile in current directory"
   echo "  clean          - Clean state unreferenced state files from .forge"
   echo "  purge          - Remove all stuff created by skyforge"
-  echo "  devmode        - Developer mode: Save tgz snapshots for every step"
+  echo "  tarball        - Developer mode: Save tgz snapshots for every step"
   echo "  status         - Print current steps and their status"
   echo "  replay hash    - Replay all actions starting with the one with specified hash"
+  echo "  mount          - Mount the OverlayFS to ./rootfs"
   exit 1
 }
 
@@ -292,7 +354,10 @@ skyforge_init
 case "$1" in
   clean)
     skyforge_cleanup Skyfile
-    echo "Cleanup complete"
+    if [ $? -eq "0" ]; then
+      umount rootfs
+    fi
+    echo "Cleanup complete, rootfs unmounted"
   ;;
   build)
     skyforge_cleanup Skyfile
@@ -306,15 +371,21 @@ case "$1" in
       rm -f "$line"
     done
 
+    echo "[i] Unmounting and removing target rootfs"
+    skyforge_directory_is_mountpoint rootfs
+    if [ $? -eq "0" ]; then
+      umount rootfs
+    fi
+    rm -Rf rootfs
+
     echo "[i] Removing snapshots and configuration"
     rm -Rf .forge
-    echo "[i] Removing rootfs"
-    rm -Rf rootfs
+
     echo "[i] Everything's been purged"
   ;;
-  devmode)
+  tarball)
     echo 1 > $WORKDIR/.save_steps
-    echo "Development mode enabled. Each step will be tarballed"
+    echo "Each build step will be tarballed now"
   ;;
   status)
     DRY_RUN=1
@@ -322,6 +393,10 @@ case "$1" in
     ;;
   replay)
     rm -f ${WORKDIR}/${2}*
+    ;;
+  mount)
+    DRY_RUN=1
+    skyforge_run_skyfile Skyfile
     ;;
   *)
     usage $1
