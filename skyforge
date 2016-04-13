@@ -9,6 +9,7 @@ WORKDIR=.forge
 DRY_RUN=0
 NEED_RESTORE=0
 RERUN_FOLLOWING=0
+CLEANUP=
 
 skyforge_init()
 {
@@ -33,7 +34,7 @@ skyforge_cleanup()
 {
 
 #Not the most optimal, but gets the job done
-  echo "Reading skyfile tree"
+  echo "Reading the sacred Skyfile..."
   for hash in `ls $WORKDIR|grep -v tgz`; do
     CURHASH=$hash
     DRY_RUN=1
@@ -45,14 +46,17 @@ skyforge_cleanup()
         rm -f $WORKDIR/$hash*
     fi
   done
-  echo "Cleanup complete"
-  echo "-------------"
+  echo "Initial cleanup complete"
+  echo "------------------------"
   unset CURHASH
   DRY_RUN=0
 }
 
 skyforge_kill_chroot_processes()
 {
+  # No root, no party
+  [ ! -d rootfs ] && return 0
+
   PREFIX=`cd rootfs && pwd`
   FOUND=0
 
@@ -148,9 +152,18 @@ skyforge_execute_step()
 
 skyforge_run_skyfile()
 {
+  if [ ! -f $1 ]; then
+    echo "ERROR: Can't find Skyfile script $1"
+    exit 1
+  fi
+
   cat $1| grep -v '^$' | grep -v '^#' | sed "s/'/\\'/g" | \
     while IFS= read line; do
-    skyforge_execute_step "$line"
+      if [ "`echo $line | awk '{print $1}'`" == "INCLUDE" ]; then
+        skyforge_run_skyfile `echo $line | awk '{print $2}'`
+      else
+        skyforge_execute_step "$line"
+      fi
   done
 }
 
@@ -185,6 +198,7 @@ REMOVE()
 STORE()
 {
   tar cpzf $1 -C rootfs .
+  echo "$1" >> $WORKDIR/.cleanup
 }
 
 PASSWD()
@@ -223,6 +237,32 @@ APT_KEY()
   RUN wget -O- $1 \| apt-key add -
 }
 
+SYMLINK2COPY()
+{
+  cd rootfs
+  for link in `find . -type l`; do
+    dir=$(dirname "$link")
+    reltarget=$(readlink "$link")
+    if [[ $reltarget == /* ]]; then
+        abstarget=.$reltarget
+    else
+        abstarget=$dir/$reltarget
+    fi
+
+    rm -fv "$link"
+    cp -af "$abstarget" "$link" || {
+        # on failure, restore the symlink
+        rm -rfv "$link"
+        ln -sfv "$reltarget" "$link"
+    }
+done
+    cd ..
+}
+
+ADD()
+{
+  tar xf $1 -C rootfs/$2
+}
 
 usage()
 {
@@ -260,9 +300,15 @@ case "$1" in
     echo "Your rootfs is now forged!"
   ;;
   purge)
+    cat $WORKDIR/.cleanup | while read line; do
+      echo "[i] Removing build artifact: $line"
+      rm -f "$line"
+    done
+    echo "[i] Removing snapshots and configuration"
     rm -Rf .forge
+    echo "[i] Removing rootfs"
     rm -Rf rootfs
-    echo "Everything's been purged"
+    echo "[i] Everything's been purged"
   ;;
   devmode)
     echo 1 > $WORKDIR/.save_steps

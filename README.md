@@ -108,6 +108,14 @@ Runs multistrap with the supplied debarch (e.g. armel) using the config file sup
 MULTISTRAP armel debian-armel.conf
 ```
 
+## INCLUDE Skyfile
+
+Include a Skyfile script.
+
+```
+INCLUDE Skyfile.inc
+```
+
 ## INSTALL filename
 
 Copies a file from host operating system to target
@@ -135,7 +143,8 @@ DELETE /etc/resolv.conf
 
 ##STORE filename
 
-Tarball the root filesystem into the archive filename
+Tarball the root filesystem into the archive filename.
+The archive generated will be deleted if you run 'skyforge purge'
 
 ```
 STORE rootfs.tar.gz
@@ -204,6 +213,24 @@ ls rootfs/
 
 are essentially the same
 
+##SYMLINK2COPY
+
+Replace all symlinks in the root filesystem with file copies. This bloats the filesystem but is sometimes the only choice if you want to use the rootfs as a
+sysroot for development in a windows-environment that (sic!) doesn't play with symlinks well.
+
+```
+SYMLINK2COPY
+```
+
+##ADD filename.tgz dir
+
+Unpack the filename.tgz into the rootfs/[dir] directory.
+
+```
+ADD stuff.tgz /
+ADD cross-compiler.tgz /opt
+```
+
 # A complete Skyfile Example
 
 ```
@@ -238,5 +265,5 @@ STORE rootfs.tgz
 
 # TODO
 
-## Use aufs for snapshots. Current tarball implementation is slow as hell
-## More commands
+## Use aufs for snapshots. Current tarball implementation is slow and ineffective
+## More sanity-checking, better error-reporting
