@@ -275,8 +275,3 @@ REMOVE /etc/resolv.conf
 
 STORE rootfs.tgz
 ```
-
-# TODO
-
-## Use aufs for snapshots. Current tarball implementation is slow and ineffective
-## More sanity-checking, better error-reporting
