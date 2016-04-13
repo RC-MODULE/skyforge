@@ -300,10 +300,12 @@ case "$1" in
     echo "Your rootfs is now forged!"
   ;;
   purge)
-    cat $WORKDIR/.cleanup | while read line; do
+
+    [ -f "$WORKDIR/.cleanup" ] && cat $WORKDIR/.cleanup | while read line; do
       echo "[i] Removing build artifact: $line"
       rm -f "$line"
     done
+
     echo "[i] Removing snapshots and configuration"
     rm -Rf .forge
     echo "[i] Removing rootfs"
