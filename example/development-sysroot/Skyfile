@@ -1,0 +1,4 @@
+#The basic multistrap stuff
+MULTISTRAP armel multistrap.conf
+SYMLINK2COPY
+STORE armel-sdk-sysroot.tgz
