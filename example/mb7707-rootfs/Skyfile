@@ -1,6 +1,5 @@
 #The basic multistrap stuff
 MULTISTRAP armel debian-mb7707.conf
-INSTALL /usr/bin/qemu-arm-static
 
 #This file contains common system setup stuff
 INCLUDE Skyfile.common

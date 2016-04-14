@@ -241,7 +241,40 @@ skyforge_run_skyfile()
 
 MULTISTRAP()
 {
-    multistrap -d rootfs -a ${1} -f ${2}
+  multistrap -d rootfs -a ${1} -f ${2}
+
+  #We have to map here from debian architecture names to qemu-static ones
+  #That's a f*cking mess ;(
+  ARCH=
+  if [ "${1}" == "armel" ] || [ "${1}" == "armhf" ] || [ "${1}" == "arm" ]; then
+    ARCH=arm
+  fi
+
+  if [ "${1}" == "arm64" ]; then
+    ARCH=aarch64
+  fi
+
+  if [ "${1}" == "mips" ] || [ "${1}" == "mipsel" ]; then
+    ARCH=${1}
+  fi
+
+  if [ "${1}" == "i386" ]; then
+    ARCH=${1}
+  fi
+
+  if [ "${1}" == "amd64" ]; then
+    ARCH=x86_64
+  fi
+
+  #TODO: Other architectures here, please
+
+  if [ -z "$ARCH" ]; then
+   echo "[W] Didn't auto-detect proper qemu static binary to install, please install manually"
+  else
+    cp `which qemu-$ARCH-static` rootfs/usr/bin/
+    echo "[I] Installing /usr/bin/qemu-$ARCH-static to target"
+  fi
+
 }
 
 RUN()
@@ -381,8 +414,10 @@ case "$1" in
     skyforge_bind_unmount
 
     [ -f "$WORKDIR/.cleanup" ] && cat $WORKDIR/.cleanup | while read line; do
-      echo "[i] Removing build artifact: $line"
-      rm -f "$line"
+      if [ -f $line ]; then
+        echo "[i] Removing build artifact: $line"
+        rm -f "$line"
+      fi
     done
 
     echo "[i] Unmounting and removing target rootfs"

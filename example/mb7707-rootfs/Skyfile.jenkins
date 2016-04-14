@@ -2,7 +2,6 @@
 # We use this Skyfile to create docker images for cross-compilation with jenkins
 
 MULTISTRAP $DEBARCH $MULTISTRAP_CONF
-INSTALL /usr/bin/qemu-$ARCH-static
 
 INCLUDE Skyfile.common
 
@@ -17,6 +16,6 @@ RUN chmod 777 /var/lib/jenkins/
 RUN chmod 777 /etc/passwd
 RUN chmod 777 /etc/group
 RUN chmod 777 /root
-RUN echo "'jenkins ALL=(ALL) NOPASSWD:ALL'" >> /etc/sudoers
+RUN "echo 'jenkins ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers"
 
 STORE rootfs-docker.tgz
