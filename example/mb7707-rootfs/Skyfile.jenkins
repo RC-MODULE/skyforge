@@ -1,30 +1,22 @@
-#Skyfile can use environment variables passed from, say, jenkins
+# Skyfile can use environment variables passed from, say, jenkins
+# We use this Skyfile to create docker images for cross-compilation with jenkins
 
 MULTISTRAP $DEBARCH $MULTISTRAP_CONF
 INSTALL /usr/bin/qemu-$ARCH-static
 
-RUN DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true LC_ALL=C LANGUAGE=C LANG=C /var/lib/dpkg/info/dash.preinst install
-RUN DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true LC_ALL=C LANGUAGE=C LANG=C dpkg --configure -a
+INCLUDE Skyfile.common
 
-#Install a proper resolv.conf
-INSTALL /etc/resolv.conf
+wget -c http://www.module.ru/mb7707/toolchains-neuromatrix/module-nmc-20140702.tar.gz
+ADD module-nmc-20140702.tar.gz /opt/
 
-#Install RCM Repository GPG Key
-APT_KEY http://www.module.ru/mb7707/repo/repository.gpg
+RUN echo "export PATH=$PATH:/opt/module-nmc/bin-lnx/" > /root/.bashrc
+RUN echo "export NEURO=/opt/module-nmc" >> /root/.bashrc
 
-#Basic system setup
-PASSWD 12345678
-HOSTNAME shade
-LOCALE en_US.UTF8 UTF8
-IFACE_STATIC eth0 192.168.20.9 255.255.255.0 192.168.20.1 8.8.8.8
-#IFACE_DHCP eth0
+RUN mkdir -p /var/lib/jenkins/
+RUN chmod 777 /var/lib/jenkins/
+RUN chmod 777 /etc/passwd
+RUN chmod 777 /etc/group
+RUN chmod 777 /root
+RUN echo "'jenkins ALL=(ALL) NOPASSWD:ALL'" >> /etc/sudoers
 
-#Enable root access over ssh
-RUN sed "'s/PermitRootLogin without-password/PermitRootLogin yes/'" -i etc/ssh/sshd_config
-
-#Force SSH to generate host keys at boot
-REMOVE /etc/ssh/ssh_host_*
-REMOVE /etc/resolv.conf
-
-STORE rootfs.tgz
-SH ./makeubifs.sh rootfs rootfs.ubifs
+STORE rootfs-docker.tgz
