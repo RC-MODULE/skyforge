@@ -62,7 +62,7 @@ skyforge_cleanup()
     if [ "$HASH_FOUND" == "KEEP" ]; then
         echo "Keeping $WORKDIR/$hash"
     else
-        echo "Deleting $WORKDIR/$hash"
+        echo "Deleting $WORKDIR/$hash ($HASH_FOUND)"
         rm -rf $WORKDIR/$hash*
     fi
   done
@@ -106,9 +106,9 @@ skyforge_bind_mount()
 
 skyforge_bind_unmount()
 {
-  umount ./rootfs/proc/ || exit 1
-  umount ./rootfs/sys/ || exit 1
-  umount ./rootfs/dev/ || exit 1
+  umount ./rootfs/proc/
+  umount ./rootfs/sys/
+  umount ./rootfs/dev/
 }
 
 skyforge_delete_rootfs()
@@ -227,11 +227,9 @@ skyforge_run_skyfile()
     while IFS= read line; do
       case "`echo $line | awk '{print $1}'`" in
       INCLUDE)
-        echo "[N]                                  | $line"
         skyforge_run_skyfile `echo $line | awk '{print $2}'`
         ;;
       ARTIFACT)
-        echo "[N]                                  | $line"
         echo "`echo $line | awk '{print $2}'`" >> $WORKDIR/.cleanup
         ;;
       *)
@@ -368,9 +366,9 @@ skyforge_init
 case "$1" in
   clean)
     skyforge_cleanup $SKYFILE
-    if [ $? -eq "0" ]; then
-      umount rootfs
-    fi
+    skyforge_kill_chroot_processes
+    skyforge_bind_unmount
+    umount rootfs
     echo "[I] Cleanup complete, rootfs unmounted"
   ;;
   build)
@@ -379,6 +377,8 @@ case "$1" in
     echo "[I] Your rootfs is now forged!"
   ;;
   purge)
+    skyforge_kill_chroot_processes
+    skyforge_bind_unmount
 
     [ -f "$WORKDIR/.cleanup" ] && cat $WORKDIR/.cleanup | while read line; do
       echo "[i] Removing build artifact: $line"
