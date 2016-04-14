@@ -11,6 +11,10 @@ NEED_RESTORE=0
 RERUN_FOLLOWING=0
 CLEANUP=
 
+if [ -z "$SKYFILE" ]; then
+  SKYFILE=Skyfile
+fi
+
 skyforge_init()
 {
   [ -d $WORKDIR ] || mkdir -p $WORKDIR
@@ -26,6 +30,7 @@ skyforge_init()
   fi
 
   skyforge_check_overlayfs
+  modprobe overlay
   if [ "$?" != "0" ]; then
     echo "[W] No OverlayFS support in current kernel. Fast snapshots unavailable. Read docs"
     return 0
@@ -49,7 +54,7 @@ skyforge_cleanup()
 {
 
 #Not the most optimal, but gets the job done
-  echo "Reading the sacred Skyfile..."
+  echo "Reading the sacred $SKYFILE..."
   for hash in `ls $WORKDIR|grep -v tgz`; do
     CURHASH=$hash
     DRY_RUN=1
@@ -101,9 +106,9 @@ skyforge_bind_mount()
 
 skyforge_bind_unmount()
 {
-  umount ./rootfs/proc/
-  umount ./rootfs/sys/
-  umount ./rootfs/dev/
+  umount ./rootfs/proc/ || exit 1
+  umount ./rootfs/sys/ || exit 1
+  umount ./rootfs/dev/ || exit 1
 }
 
 skyforge_delete_rootfs()
@@ -220,11 +225,19 @@ skyforge_run_skyfile()
 
   cat $1| grep -v '^$' | grep -v '^#' | sed "s/'/\\'/g" | \
     while IFS= read line; do
-      if [ "`echo $line | awk '{print $1}'`" == "INCLUDE" ]; then
+      case "`echo $line | awk '{print $1}'`" in
+      INCLUDE)
+        echo "[N]                                  | $line"
         skyforge_run_skyfile `echo $line | awk '{print $2}'`
-      else
+        ;;
+      ARTIFACT)
+        echo "[N]                                  | $line"
+        echo "`echo $line | awk '{print $2}'`" >> $WORKDIR/.cleanup
+        ;;
+      *)
         skyforge_execute_step "$line"
-      fi
+        ;;
+      esac
   done
 }
 
@@ -337,6 +350,7 @@ usage()
   echo "  status         - Print current steps and their status"
   echo "  replay hash    - Replay all actions starting with the one with specified hash"
   echo "  mount          - Mount the OverlayFS to ./rootfs"
+  echo "TIP: You can specify the Skyfile to run with SKYFILE=mySkyfile skyforge blah"
   exit 1
 }
 
@@ -353,16 +367,16 @@ fi
 skyforge_init
 case "$1" in
   clean)
-    skyforge_cleanup Skyfile
+    skyforge_cleanup $SKYFILE
     if [ $? -eq "0" ]; then
       umount rootfs
     fi
-    echo "Cleanup complete, rootfs unmounted"
+    echo "[I] Cleanup complete, rootfs unmounted"
   ;;
   build)
-    skyforge_cleanup Skyfile
-    skyforge_run_skyfile Skyfile
-    echo "Your rootfs is now forged!"
+    skyforge_cleanup $SKYFILE
+    skyforge_run_skyfile $SKYFILE
+    echo "[I] Your rootfs is now forged!"
   ;;
   purge)
 
@@ -378,25 +392,25 @@ case "$1" in
     fi
     rm -Rf rootfs
 
-    echo "[i] Removing snapshots and configuration"
+    echo "[i] Removing snapshots and runtime configuration"
     rm -Rf .forge
 
-    echo "[i] Everything's been purged"
+    echo "[I] Everything's been purged"
   ;;
   tarball)
     echo 1 > $WORKDIR/.save_steps
-    echo "Each build step will be tarballed now"
+    echo "[I] Each build step will be tarballed now"
   ;;
   status)
     DRY_RUN=1
-    skyforge_run_skyfile Skyfile
+    skyforge_run_skyfile $SKYFILE
     ;;
   replay)
     rm -f ${WORKDIR}/${2}*
     ;;
   mount)
     DRY_RUN=1
-    skyforge_run_skyfile Skyfile
+    skyforge_run_skyfile $SKYFILE
     ;;
   *)
     usage $1

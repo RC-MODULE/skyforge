@@ -244,6 +244,11 @@ ADD stuff.tgz /
 ADD cross-compiler.tgz /opt
 ```
 
+##ARTIFACT filename
+
+Mark filename as a build artifact. The only effect this has - this file will be
+removed when you run skyforge purge
+
 # A complete Skyfile Example
 
 ```
