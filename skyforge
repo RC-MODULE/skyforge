@@ -246,6 +246,8 @@ skyforge_run_skyfile()
 MULTISTRAP()
 {
   multistrap -d rootfs -a ${1} -f ${2}
+  R=$?
+  [ "$R" != "0" ] && return $R
 
   #We have to map here from debian architecture names to qemu-static ones
   #That's a f*cking mess ;(
