@@ -19,6 +19,7 @@ RUN chmod 777 /root
 RUN "echo 'jenkins ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers"
 
 #Internal nightly builds repository
+INSTALL /etc/resolv.conf
 RUN echo "deb http://shadowblade/repo/debian jessie main >> /etc/apt/sources.list"
 RUN apt-get update
 
