@@ -20,7 +20,9 @@ RUN "echo 'jenkins ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers"
 
 #Internal nightly builds repository
 INSTALL /etc/resolv.conf
-RUN echo "deb http://shadowblade/repo/debian jessie main >> /etc/apt/sources.list"
+#Make sure we have our apt proxy in the image, or slaves will fail 
+INSTALL /etc/apt/apt.conf.d/proxy
+RUN echo "deb http://shadowblade.module.ru/repo/debian jessie main >> /etc/apt/sources.list"
 RUN apt-get update
 
 
