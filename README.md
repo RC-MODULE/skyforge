@@ -117,7 +117,7 @@ skyforge replay b1fabddf2afd249fc0a6cb6197ce3e6b
 
 Runs multistrap with the supplied debarch (e.g. armel) using the config file supplied. Should be the first command to run. This step also makes sure an adequate qemu-static binary is copied to target chroot. (e.g. qemu-arm-static for arm).
 
-NOTE: Since debian architecture names are not always mapped one-to-one to qemu architecture names this script takes care to guess the right one. This logic currently covers arm, mips and x86/x86_64 variants. If you have something else - patches are welcome. 
+NOTE: Since debian architecture names are not always mapped one-to-one to qemu architecture names this script takes care to guess the right one. This logic currently covers arm, mips and x86/x86_64 variants. If you have something else - patches are welcome.
 
 ```
 MULTISTRAP armel debian-armel.conf
@@ -281,3 +281,10 @@ REMOVE /etc/resolv.conf
 
 STORE rootfs.tgz
 ```
+
+See more examples in example/ directory
+
+
+#License
+
+The most awesome license in the whole universe - WTFPL. See LICENSE.TXT
