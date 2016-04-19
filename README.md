@@ -115,7 +115,9 @@ skyforge replay b1fabddf2afd249fc0a6cb6197ce3e6b
 
 ## MULTISTRAP debarch config-file
 
-Runs multistrap with the supplied debarch (e.g. armel) using the config file supplied. Should be the first command to run
+Runs multistrap with the supplied debarch (e.g. armel) using the config file supplied. Should be the first command to run. This step also makes sure an adequate qemu-static binary is copied to target chroot. (e.g. qemu-arm-static for arm).
+
+NOTE: Since debian architecture names are not always mapped one-to-one to qemu architecture names this script takes care to guess the right one. This logic currently covers arm, mips and x86/x86_64 variants. If you have something else - patches are welcome. 
 
 ```
 MULTISTRAP armel debian-armel.conf
@@ -139,8 +141,7 @@ INSTALL /etc/resolv.conf
 
 ##RUN command
 
-Runs a command in chrooted environment. If you have a cross-chroot you should've
-copied corresponding qemu static binary there beforehand
+Runs a command in chrooted environment. If you have a cross-chroot and that doesn't work check if you have qemu-user-static installed and that MULTISTRAP command actually copied the right one to your chroot.
 
 ```
 RUN uname -a
