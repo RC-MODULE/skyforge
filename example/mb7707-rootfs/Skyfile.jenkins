@@ -1,29 +1,14 @@
-# Skyfile can use environment variables passed from, say, jenkins
-# We use this Skyfile to create docker images for cross-compilation with jenkins
-
+#The basic multistrap stuff
 MULTISTRAP $DEBARCH $MULTISTRAP_CONF
 
+#This file contains common system setup stuff
 INCLUDE Skyfile.common
 
-wget -c http://www.module.ru/mb7707/toolchains-neuromatrix/module-nmc-20140702.tar.gz
-ADD module-nmc-20140702.tar.gz /opt/
+#Package a rootfs tarball
+STORE rootfs.tgz
 
-RUN echo "export PATH=$PATH:/opt/module-nmc/bin-lnx/ > /root/.bashrc"
-RUN echo "export NEURO=/opt/module-nmc >> /root/.bashrc"
+#And pack the rootfs as an ubifs image
+./makeubifs.sh rootfs rootfs.ubifs
 
-RUN mkdir -p /var/lib/jenkins/
-RUN chmod 777 /var/lib/jenkins/
-RUN chmod 777 /etc/passwd
-RUN chmod 777 /etc/group
-RUN chmod 777 /root
-RUN "echo 'jenkins ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers"
-
-#Internal nightly builds repository
-INSTALL /etc/resolv.conf
-#Make sure we have our apt proxy in the image, or slaves will fail 
-INSTALL /etc/apt/apt.conf.d/proxy
-RUN echo "deb http://shadowblade.module.ru/repo/debian jessie main >> /etc/apt/sources.list"
-RUN apt-get update
-
-
-STORE rootfs-docker.tgz
+#Make sure we remove the bypass product of makeubifs.sh
+ARTIFACT temp.img

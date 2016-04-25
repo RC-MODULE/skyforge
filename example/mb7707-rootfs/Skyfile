@@ -1,5 +1,5 @@
 #The basic multistrap stuff
-MULTISTRAP armel debian-mb7707.conf
+MULTISTRAP armhf multistrap/raspbian-devel.conf
 
 #This file contains common system setup stuff
 INCLUDE Skyfile.common
