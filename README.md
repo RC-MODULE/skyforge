@@ -287,4 +287,4 @@ See more examples in example/ directory
 
 #License
 
-The most awesome license in the whole universe - WTFPL. See LICENSE.TXT
+See LICENSE.TXT
