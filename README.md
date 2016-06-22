@@ -236,6 +236,12 @@ sysroot for development in a windows-environment that (sic!) doesn't play with s
 SYMLINK2COPY
 ```
 
+## LDSOFIXUP
+
+Concatenate contents of rootfs/etc/ld.so.conf.d into one ld.so.conf
+This is usually required if you plan to use the rootfs as a sysroot with linaro abe-based crooss toolchains that don't read properly the contents of /etc/ld.so.conf.d/
+If you plan to actually boot the system - you don't need this one.
+
 ##ADD filename.tgz dir
 
 Unpack the filename.tgz into the rootfs/[dir] directory.

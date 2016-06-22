@@ -369,9 +369,28 @@ SYMLINK2COPY()
   cd ..
 }
 
+LDSOFIXUP()
+{
+  cd rootfs
+  cat etc/ld.so.conf.d/* > /etc/ld.so.conf
+  cd ..
+}
+
 ADD()
 {
-  tar xf $1 -C rootfs/$2
+  tar xpf $1 -C rootfs/$2
+}
+
+EXT4IMAGE()
+{
+  dd if=/dev/zero of=$2 bs=$1 count=1
+  [ -d $2.mount ] && umount $2.mount
+  [ -d $2.mount ] || mkdir $2.mount
+  mkfs.ext4 -L $2 $2
+  mount -t ext4 -o loop $2 $2.mount
+  cd rootfs && tar cpf - . | tar xpf - -C ../$2.mount; cd ..
+  umount $2.mount
+  rmdir $2.mount
 }
 
 usage()
