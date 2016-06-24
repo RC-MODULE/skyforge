@@ -369,6 +369,30 @@ SYMLINK2COPY()
   cd ..
 }
 
+SYMLINK2RELATIVE()
+{
+  cd rootfs
+  CURDIR=`pwd`
+  find . -lname "/*" | while read l; do
+      LINK="`readlink $l`"
+      DIR=`dirname $LINK`
+      NAME=`basename $LINK`
+      SLASHES="`echo $l|sed 's/[^/]//g'|wc -m`"
+      COUNT=$(($SLASHES-2))
+      SLASHES=""
+      while [ "$COUNT" -gt "0" ]; do
+          SLASHES="$SLASHES../"
+          COUNT=$((COUNT-1))
+      done
+      REL="${SLASHES}${DIR}/${NAME}"
+      cd "`dirname $l`"
+      ln -sfv $REL "`basename $l`"
+      cd "$CURDIR"
+  done
+  cd ..
+}
+
+
 LDSOFIXUP()
 {
   cd rootfs
