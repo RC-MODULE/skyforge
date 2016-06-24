@@ -235,6 +235,13 @@ sysroot for development in a windows-environment that (sic!) doesn't play with s
 ```
 SYMLINK2COPY
 ```
+##SYMLINK2RELATIVE
+
+Replace all symlinks containing absolute paths in the root filesystem with
+symlinks containing relative paths. This is required if you plan to use the resulting rootfs as a development sysroot (Because unpacking this filesystem anywhere save for / will corrupt symlinks)
+```
+SYMLINK2
+```
 
 ## LDSOFIXUP
 
