@@ -372,7 +372,7 @@ SYMLINK2COPY()
 LDSOFIXUP()
 {
   cd rootfs
-  cat etc/ld.so.conf.d/* > /etc/ld.so.conf
+  cat etc/ld.so.conf.d/* > etc/ld.so.conf
   cd ..
 }
 
