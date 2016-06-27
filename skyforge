@@ -352,7 +352,7 @@ skyforge_replace_symlink_with_copy()
 {
   link="$1"
 
-  if [ ! -L "$abstarget" ]; then
+  if [ ! -L "$link" ]; then
     return
   fi
 
@@ -375,15 +375,25 @@ skyforge_replace_symlink_with_copy()
       rm -rfv "$link"
       ln -sfv "$reltarget" "$link"
   }
+
+  if [ -d "$link" ]; then
+    skyforge_replace_symlinks_in_dir_with_copies $link
+  fi
+}
+
+#$1 == dir
+skyforge_replace_symlinks_in_dir_with_copies()
+{
+    cd $1
+    find . -type l | while read link; do
+      skyforge_replace_symlink_with_copy "$link"
+    done
+    cd ..
 }
 
 SYMLINK2COPY()
 {
-  cd rootfs
-  for link in `find . -type l`; do
-    skyforge_replace_symlink_with_copy "$link"
-  done
-  cd ..
+  skyforge_replace_symlinks_in_dir_with_copies rootfs
 }
 
 SYMLINK2RELATIVE()
