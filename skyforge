@@ -13,6 +13,7 @@ DRY_RUN=0
 NEED_RESTORE=0
 RERUN_FOLLOWING=0
 CLEANUP=
+SKIP_CHECKPOINTING="EXT4IMAGE STORE DISKIMAGE"
 
 if [ -z "$SKYFILE" ]; then
   SKYFILE=Skyfile
@@ -49,6 +50,11 @@ skyforge_check_overlayfs()
 
 skyforge_hash()
 {
+  tmp=( $* )
+  tmp=${tmp[0]}
+  for cmd in $SKIP_CHECKPOINTING; do
+    [ "$tmp" == "$cmd" ] && return;
+  done
   PREVIOUS="$CURRENT"
   CURRENT=`echo "${CURRENT}.$*" | md5sum | cut -d" " -f1`
 }
@@ -435,14 +441,18 @@ ADD()
 
 EXT4IMAGE()
 {
-  dd if=/dev/zero of=$2 bs=$1 count=1
-  [ -d $2.mount ] && umount $2.mount
-  [ -d $2.mount ] || mkdir $2.mount
-  mkfs.ext4 -L $2 $2
-  mount -t ext4 -o loop $2 $2.mount
-  cd rootfs && tar cpf - . | tar xpf - -C ../$2.mount; cd ..
-  umount $2.mount
-  rmdir $2.mount
+  NAME=$2
+  SIZE=$1
+  shift
+  shift
+  dd if=/dev/zero of=$NAME bs=$SIZE count=1
+  [ -d $NAME.mount ] && umount $NAME.mount
+  [ -d $NAME.mount ] || mkdir $NAME.mount
+  mkfs.ext4 $NAME $*
+  mount -t ext4 -o loop $NAME $NAME.mount
+  cd rootfs && tar cpf - . | tar xpf - -C ../$NAME.mount; cd ..
+  umount $NAME.mount
+  rmdir $NAME.mount
 }
 
 usage()
