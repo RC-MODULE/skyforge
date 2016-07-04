@@ -390,11 +390,12 @@ skyforge_replace_symlink_with_copy()
 #$1 == dir
 skyforge_replace_symlinks_in_dir_with_copies()
 {
+    PREVDIR="`pwd`"
     cd $1
     find . -type l | while read link; do
       skyforge_replace_symlink_with_copy "$link"
     done
-    cd ..
+    cd "$PREVDIR"
 }
 
 SYMLINK2COPY()
@@ -420,7 +421,7 @@ SYMLINK2RELATIVE()
       REL="${SLASHES}${DIR}/${NAME}"
       REL="`echo $REL | sed 's/\/\//\//g'`"
       cd "`dirname $l`"
-      ln -sfv $REL "`basename $l`"
+      ln -sf $REL "`basename $l`"
       cd "$CURDIR"
   done
   cd ..
