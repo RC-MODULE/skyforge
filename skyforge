@@ -50,12 +50,12 @@ skyforge_check_overlayfs()
 
 skyforge_hash()
 {
+  PREVIOUS="$CURRENT"
   tmp=( $* )
   tmp=${tmp[0]}
   for cmd in $SKIP_CHECKPOINTING; do
     [ "$tmp" == "$cmd" ] && return;
   done
-  PREVIOUS="$CURRENT"
   CURRENT=`echo "${CURRENT}.$*" | md5sum | cut -d" " -f1`
 }
 
@@ -184,16 +184,22 @@ skyforge_execute_step()
     return 0;
   fi
 
+  if [ "$CURRENT" == "$PREVIOUS" ]; then
+    PRINTHASH="--------------------------------"
+  else
+    PRINTHASH=$CURRENT
+  fi
+
   #Status output. Should we skip this step?
   if [ -f $WORKDIR/$CURRENT ] && [ "$RERUN_FOLLOWING" -ne "1" ]; then
-    echo "[S] $CURRENT | $* "
+    echo "[S] $PRINTHASH | $* "
     NEED_RESTORE=1
     #Make sure to add it as overlay before bailing out
     skyforge_overlay_add_layer $CURRENT
     return 0;
   fi
 
-  echo "[R] $CURRENT | $*"
+  echo "[R] $PRINTHASH | $*"
   RERUN_FOLLOWING=1
 
   if [ "$DRY_RUN" -eq "1" ]; then
@@ -353,54 +359,17 @@ APT_KEY()
   RUN wget -O- $1 \| apt-key add -
 }
 
-#$1
-skyforge_replace_symlink_with_copy()
-{
-  link="$1"
-
-  if [ ! -L "$link" ]; then
-    return
-  fi
-
-  dir=$(dirname "$link")
-  reltarget=$(readlink "$link")
-  if [[ $reltarget == /* ]]; then
-      abstarget=.$reltarget
-  else
-      abstarget=$dir/$reltarget
-  fi
-
-  rm -f "$link"
-
-  if [ -L "$abstarget" ]; then
-    skyforge_replace_symlink_with_copy $abstarget
-  fi
-
-  cp -af "$abstarget" "$link" || {
-      # on failure, restore the symlink
-      rm -rfv "$link"
-      ln -sfv "$reltarget" "$link"
-  }
-
-  if [ -d "$link" ]; then
-    skyforge_replace_symlinks_in_dir_with_copies $link
-  fi
-}
-
-#$1 == dir
-skyforge_replace_symlinks_in_dir_with_copies()
-{
-    PREVDIR="`pwd`"
-    cd $1
-    find . -type l | while read link; do
-      skyforge_replace_symlink_with_copy "$link"
-    done
-    cd "$PREVDIR"
-}
-
+# FixMe: Bash-scripted replacing of symlinks showed a lot of hard to deal
+# corner-cases with directories, symlinks pointing to symlinks, and other stuff.
+# tar will do a way better job at this!
 SYMLINK2COPY()
 {
-  skyforge_replace_symlinks_in_dir_with_copies rootfs
+  cd rootfs
+  tar -hcvpf ../.forge/rootfs.tmp.tgz .
+  rm -Rf *
+  tar -xpf ../.forge/rootfs.tmp.tgz
+  rm -f ../.forge/rootfs.tmp.tgz
+  cd ..
 }
 
 SYMLINK2RELATIVE()
