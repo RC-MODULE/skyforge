@@ -396,6 +396,39 @@ SYMLINK2RELATIVE()
   cd ..
 }
 
+DENY_SERVICE_START()
+{
+  # Save yourself from daemons raging in chroot
+  cat > rootfs/usr/sbin/policy-rc.d <<EOF
+  #!/bin/sh
+  exit 101
+EOF
+  chmod a+x rootfs/usr/sbin/policy-rc.d
+}
+
+ALLOW_SERVICE_START()
+{
+  rm rootfs/usr/sbin/policy-rc.d
+}
+
+DPKG_CONFIGURE()
+{
+  case "$1" in
+    silent)
+      ICMD="DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true"
+    ;;
+    interactive)
+      ICMD=""
+    ;;
+    *)
+      ICMD=$*
+    ;;
+  esac
+  DENY_SERVICE_START
+  RUN $ICMD LC_ALL=C LANGUAGE=C LANG=C /var/lib/dpkg/info/dash.preinst install
+  RUN $ICMD LC_ALL=C LANGUAGE=C LANG=C dpkg --configure -a
+  ALLOW_SERVICE_START
+}
 
 LDSOFIXUP()
 {

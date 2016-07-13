@@ -123,6 +123,46 @@ NOTE: Since debian architecture names are not always mapped one-to-one to qemu a
 MULTISTRAP armel debian-armel.conf
 ```
 
+## DPKG_CONFIGURE
+
+Runs the steps required to configure the unpacked packages in chroot.
+This command does the following:
+
+1. Prohibits the start of any services via policy-rc.d
+2. Runs the dash.preinst script (As described in debian wiki)
+3. Runs dpkg-configure -a
+4. Allows service startup
+
+The default behavior is interactive (e.g. allow dpkg-configure to ask different
+questions). If this is not desired, supply the silent argument.
+If you want to other variables you can do it here as well.
+
+Configure packages, ask no questions
+```
+DPKG_CONFIGURE silent
+```
+or
+```
+DPKG_CONFIGURE DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true
+```
+
+Configure packages, ask questions about system setup
+```
+DPKG_CONFIGURE
+```
+or
+```
+DPKG_CONFIGURE interactive
+```
+
+## DENY_SERVICE_START
+
+Prohibits any services to be started in the target root filesystem via policy-rc.d
+
+## ALLOW_SERVICE_START
+
+Undos what DENY_SERVICE_START has done
+
 ## INCLUDE Skyfile
 
 Include a Skyfile script.
