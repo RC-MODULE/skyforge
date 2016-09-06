@@ -118,6 +118,10 @@ skyforge_bind_unmount()
   umount ./rootfs/proc/
   umount ./rootfs/sys/
   umount ./rootfs/dev/
+  MPTH="`pwd`/rootfs/"
+  for mpoint in `mount | grep "$MPTH" | awk {print $3}`; do
+    umount $mpoint
+  done
 }
 
 skyforge_delete_rootfs()
