@@ -1,4 +1,4 @@
-DPKG_CONFIGURE
+DPKG_CONFIGURE silent
 
 #Install a proper resolv.conf
 INSTALL /etc/resolv.conf

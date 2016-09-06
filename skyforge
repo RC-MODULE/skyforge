@@ -119,7 +119,7 @@ skyforge_bind_unmount()
   umount ./rootfs/sys/
   umount ./rootfs/dev/
   MPTH="`pwd`/rootfs/"
-  for mpoint in `mount | grep "$MPTH" | awk {print $3}`; do
+  for mpoint in `mount | grep "$MPTH" | awk '{print $3}'`; do
     umount $mpoint
   done
 }
