@@ -93,11 +93,11 @@ Example
 
 Legend:
 
-###[S]  
+### [S]  
 
 Skyforge will skip this step, it has already been run/we have a snapshot
 
-###[R]
+### [R]
 
 Skyforge will execute this step when you run build
 
