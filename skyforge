@@ -113,22 +113,35 @@ skyforge_bind_mount()
 	mount -o bind /dev/  ./rootfs/dev/
 }
 
+skyforge_get_chroot_mounts()
+{
+  MPTH="`pwd`/rootfs/"
+  echo "`mount | grep "$MPTH" | awk '{print $3}'`"
+}
+
 skyforge_bind_unmount()
 {
   umount ./rootfs/proc/
   umount ./rootfs/sys/
   umount ./rootfs/dev/
-  MPTH="`pwd`/rootfs/"
-  for mpoint in `mount | grep "$MPTH" | awk '{print $3}'`; do
+  for mpoint in `skyforge_get_chroot_mounts`; do
     umount $mpoint
   done
+  if [ "`skyforge_get_chroot_mounts`" != "" ]; then
+    echo "ERROR: We failed to unmount some filesystems from chroot, please do it manually"
+  fi
+
 }
 
 skyforge_delete_rootfs()
 {
   skyforge_kill_chroot_processes
   skyforge_bind_unmount
-  rm -Rf rootfs
+  if [ $? == "0" ]; then
+    rm -Rf rootfs
+  else
+    echo "ERROR: NOT purging chroot data"
+  fi
 }
 
 skyforge_restore_rootfs()
