@@ -48,6 +48,13 @@ skyforge_check_overlayfs()
   return 0
 }
 
+skyforge_is_url()
+{
+  regex='(https?|ftp|file)://[-A-Za-z0-9\+&@#/%?=~_|!:,.;]*[-A-Za-z0-9\+&@#/%=~_|]'
+  string="$1"
+  [[ $string =~ $regex ]]
+}
+
 skyforge_hash()
 {
   PREVIOUS="$CURRENT"
@@ -133,6 +140,16 @@ skyforge_bind_unmount()
 
 }
 
+skyforge_unmount_rootfs()
+{
+  #Interrupted invocations may leave multiple mounts over the same dir
+  #Therefore - do recursive cleanup
+  true
+  while [ $? -eq "0" ]; do
+    umount rootfs
+  done
+}
+
 skyforge_delete_rootfs()
 {
   skyforge_kill_chroot_processes
@@ -142,6 +159,11 @@ skyforge_delete_rootfs()
   else
     echo "ERROR: NOT purging chroot data"
   fi
+}
+
+skyforge_deb_get_depends()
+{
+  dpkg-deb -f $1 Depends|sed 's/,//g'|sed -e 's/\(([^]]*)\)//g'
 }
 
 skyforge_restore_rootfs()
@@ -164,7 +186,7 @@ skyforge_overlay_add_layer()
   skyforge_directory_is_mountpoint rootfs
 
   if [ "$?" == "0" ]; then
-    umount rootfs
+    skyforge_unmount_rootfs
   fi
 
   skyforge_check_overlayfs
@@ -437,6 +459,9 @@ DPKG_CONFIGURE()
     interactive)
       ICMD=""
     ;;
+    web)
+    ICMD="DEBIAN_FRONTEND=web"
+    ;;
     *)
       ICMD=$*
     ;;
@@ -445,6 +470,7 @@ DPKG_CONFIGURE()
   RUN $ICMD LC_ALL=C LANGUAGE=C LANG=C /var/lib/dpkg/info/dash.preinst install
   RUN $ICMD LC_ALL=C LANGUAGE=C LANG=C dpkg --configure -a
   ALLOW_SERVICE_START
+  export SKYFORGE_SYSTEM_CONFIGURED=yes
 }
 
 LDSOFIXUP()
@@ -457,6 +483,39 @@ LDSOFIXUP()
 ADD()
 {
   tar xpf $1 -C rootfs/$2
+}
+
+ADD_PACKAGES()
+{
+  DENY_SERVICE_START
+  RUN apt-get -y --force-yes install $*
+  ALLOW_SERVICE_START
+}
+
+skyforge_install_deb_with_deps()
+{
+  RUN dpkg -i $deb
+  RUN apt-get -f install
+}
+
+ADD_DEB()
+{
+  DENY_SERVICE_START
+  for line in $*; do
+    skyforge_is_url "$line"
+    if [ $? -eq "0" ]; then
+      wget $line -O rootfs/tmp.deb
+      skyforge_install_deb_with_deps rootfs/tmp.deb
+      rm rootfs/tmp.deb
+    else
+      for deb in `ls $line`; do
+        cp $deb rootfs/$deb
+        skyforge_install_deb_with_deps rootfs/$deb
+        rm -f rootfs/$deb
+        done
+    fi
+  done
+  ALLOW_SERVICE_START
 }
 
 EXT4IMAGE()
@@ -507,7 +566,7 @@ case "$1" in
     skyforge_cleanup $SKYFILE
     skyforge_kill_chroot_processes
     skyforge_bind_unmount
-    umount rootfs
+    skyforge_unmount_rootfs
     echo "[I] Cleanup complete, rootfs unmounted"
   ;;
   build)
@@ -529,9 +588,12 @@ case "$1" in
     echo "[i] Unmounting and removing target rootfs"
     skyforge_directory_is_mountpoint rootfs
     if [ $? -eq "0" ]; then
-      umount rootfs
+      skyforge_unmount_rootfs
     fi
-    rm -Rf rootfs
+
+    if [ $? -eq "0" ]; then
+      skyforge_delete_rootfs
+    fi
 
     echo "[i] Removing snapshots and runtime configuration"
     rm -Rf .forge

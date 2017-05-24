@@ -192,7 +192,24 @@ RUN uname -a
 Delete a file from target root filesystem
 
 ```
-DELETE /etc/resolv.conf
+REMOVE /etc/resolv.conf
+```
+
+## ADD_DEB package
+
+Install a debian package to target rootfs the package can be either a local file or an URL
+
+```
+    ADD_DEB https://example.com/myfile.deb
+    ADD_DEB myotherfile.deb
+```
+
+##ADD_PACKAGES pkg1 pkg2
+
+Call apt-get to install additional packages. Use of this command is not recommended. Edit multistrap.conf instead.
+
+```
+ADD_PACKAGES usb-utils
 ```
 
 ##STORE filename
@@ -278,9 +295,9 @@ SYMLINK2COPY
 ##SYMLINK2RELATIVE
 
 Replace all symlinks containing absolute paths in the root filesystem with
-symlinks containing relative paths. This is required if you plan to use the resulting rootfs as a development sysroot (Because unpacking this filesystem anywhere save for / will corrupt symlinks)
+symlinks containing relative paths. This is required if you plan to use the resulting rootfs as a development sysroot (Because unpacking this filesystem anywhere save for / will corrupt relative symlinks)
 ```
-SYMLINK2
+SYMLINK2RELATIVE
 ```
 
 ## LDSOFIXUP
