@@ -146,7 +146,7 @@ skyforge_unmount_rootfs()
   #Therefore - do recursive cleanup
   true
   while [ $? -eq "0" ]; do
-    umount rootfs
+    umount rootfs 2>/dev/null
   done
 }
 
@@ -494,7 +494,7 @@ ADD_PACKAGES()
 
 skyforge_install_deb_with_deps()
 {
-  RUN dpkg -i $deb
+  RUN dpkg -i $*
   RUN apt-get -f install
 }
 
@@ -505,13 +505,13 @@ ADD_DEB()
     skyforge_is_url "$line"
     if [ $? -eq "0" ]; then
       wget $line -O rootfs/tmp.deb
-      skyforge_install_deb_with_deps rootfs/tmp.deb
+      skyforge_install_deb_with_deps tmp.deb
       rm rootfs/tmp.deb
     else
       for deb in `ls $line`; do
-        cp $deb rootfs/$deb
-        skyforge_install_deb_with_deps rootfs/$deb
-        rm -f rootfs/$deb
+        cp $deb rootfs/tmp.deb
+        skyforge_install_deb_with_deps tmp.deb
+        rm -f rootfs/tmp.deb
         done
     fi
   done
