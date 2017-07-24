@@ -543,13 +543,13 @@ EXT4IMAGE()
 
 EXT3IMAGE()
 {
-  FS=ext4
+  FS=ext3
   makefsimage $*
 }
 
 EXT2IMAGE()
 {
-  FS=ext4
+  FS=ext2
   makefsimage $*
 }
 
