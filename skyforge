@@ -13,7 +13,7 @@ DRY_RUN=0
 NEED_RESTORE=0
 RERUN_FOLLOWING=0
 CLEANUP=
-SKIP_CHECKPOINTING="EXT4IMAGE STORE DISKIMAGE"
+SKIP_CHECKPOINTING="EXT4IMAGE EXT3IMAGE EXT2IMAGE STORE DISKIMAGE"
 
 if [ -z "$SKYFILE" ]; then
   SKYFILE=Skyfile
@@ -518,21 +518,41 @@ ADD_DEB()
   ALLOW_SERVICE_START
 }
 
-EXT4IMAGE()
+
+makefsimage()
 {
   NAME=$2
   SIZE=$1
   shift
   shift
-  dd if=/dev/zero of=$NAME bs=$SIZE count=1
+  fallocate -l $SIZE $NAME
   [ -d $NAME.mount ] && umount $NAME.mount
   [ -d $NAME.mount ] || mkdir $NAME.mount
-  mkfs.ext4 $NAME $*
-  mount -t ext4 -o loop $NAME $NAME.mount
+  mkfs.${FS} $NAME $*
+  mount -t ${FS} -o loop $NAME $NAME.mount
   cd rootfs && tar cpf - . | tar xpf - -C ../$NAME.mount; cd ..
   umount $NAME.mount
   rmdir $NAME.mount
 }
+
+EXT4IMAGE()
+{
+  FS=ext4
+  makefsimage $*
+}
+
+EXT3IMAGE()
+{
+  FS=ext4
+  makefsimage $*
+}
+
+EXT2IMAGE()
+{
+  FS=ext4
+  makefsimage $*
+}
+
 
 usage()
 {
