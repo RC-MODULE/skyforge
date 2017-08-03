@@ -538,6 +538,7 @@ makefsimage()
 EXT4IMAGE()
 {
   FS=ext4
+  FSOPTS=-O ^64bit,^metadata_csum
   makefsimage $*
 }
 
