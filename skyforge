@@ -528,7 +528,7 @@ makefsimage()
   fallocate -l $SIZE $NAME
   [ -d $NAME.mount ] && umount $NAME.mount
   [ -d $NAME.mount ] || mkdir $NAME.mount
-  mkfs.${FS} $NAME $*
+  mkfs.${FS} ${FSOPTS} $NAME $*
   mount -t ${FS} -o loop $NAME $NAME.mount
   cd rootfs && tar cpf - . | tar xpf - -C ../$NAME.mount; cd ..
   umount $NAME.mount
@@ -538,7 +538,7 @@ makefsimage()
 EXT4IMAGE()
 {
   FS=ext4
-  FSOPTS=-O ^64bit,^metadata_csum
+  FSOPTS="-O ^64bit,^metadata_csum"
   makefsimage $*
 }
 
