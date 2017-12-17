@@ -115,9 +115,10 @@ skyforge_kill_chroot_processes()
 
 skyforge_bind_mount()
 {
-  mount -o bind /proc/ ./rootfs/proc/
-	mount -o bind /sys/  ./rootfs/sys/
-	mount -o bind /dev/  ./rootfs/dev/
+  mount -o bind /proc/    ./rootfs/proc/
+	mount -o bind /sys/     ./rootfs/sys/
+	mount -o bind /dev/     ./rootfs/dev/
+  mount -o bind /dev/pts  ./rootfs/dev/pts
 }
 
 skyforge_get_chroot_mounts()
@@ -130,14 +131,15 @@ skyforge_bind_unmount()
 {
   umount ./rootfs/proc/
   umount ./rootfs/sys/
+  umount ./rootfs/dev/pts
   umount ./rootfs/dev/
+  true
   for mpoint in `skyforge_get_chroot_mounts`; do
     umount $mpoint
   done
   if [ "`skyforge_get_chroot_mounts`" != "" ]; then
     echo "ERROR: We failed to unmount some filesystems from chroot, please do it manually"
   fi
-
 }
 
 skyforge_unmount_rootfs()
@@ -488,14 +490,8 @@ ADD()
 ADD_PACKAGES()
 {
   DENY_SERVICE_START
-  RUN apt-get -y --force-yes install $*
+  RUN apt-get -f -y --force-yes install $*
   ALLOW_SERVICE_START
-}
-
-skyforge_install_deb_with_deps()
-{
-  RUN dpkg -i $*
-  RUN apt-get -f install
 }
 
 ADD_DEB()
@@ -505,16 +501,17 @@ ADD_DEB()
     skyforge_is_url "$line"
     if [ $? -eq "0" ]; then
       wget $line -O rootfs/tmp.deb
-      skyforge_install_deb_with_deps tmp.deb
+      RUN dpkg -i tmp.deb
       rm rootfs/tmp.deb
     else
       for deb in `ls $line`; do
         cp $deb rootfs/tmp.deb
-        skyforge_install_deb_with_deps tmp.deb
+        RUN dpkg -i tmp.deb
         rm -f rootfs/tmp.deb
         done
     fi
   done
+  RUN apt-get -f -y --force-yes install
   ALLOW_SERVICE_START
 }
 
@@ -554,6 +551,31 @@ EXT2IMAGE()
   makefsimage $*
 }
 
+UIMAGE()
+{
+  KVERSION=`ls rootfs/boot/ |grep vmlinuz | cut -d"-" -f2-|tail -n1`
+  DTB=$2
+  if [ ! -f rootfs/boot/initrd.img-${KVERSION} ]; then
+    echo "[W] No initrd found in rootfs, is initramfs-tools installed and initrd created?"
+  else
+    mkimage -A arm -T ramdisk -C none -n uInitrd -d rootfs/boot/initrd.img-${KVERSION} \
+    rootfs/boot/uInitrd
+  fi
+
+  mkimage -a $1 -A arm -T kernel -n uImage -d rootfs/boot/initrd.img-${KVERSION} \
+    rootfs/boot/uImage
+
+}
+
+BOOTSCRIPT()
+{
+  KVERSION=`ls rootfs/boot/ |grep vmlinuz | cut -d"-" -f2-|tail -n1`
+  DTB=$2
+
+  cat $1 | sed "s/@KVERSION@/${KVERSION}/g" | sed "s/@DTB@/${DTB}/g" > rootfs/boot/boot.scr.txt
+
+  mkimage -A arm -T script -O linux -d rootfs/boot/boot.scr.txt rootfs/boot/boot.scr
+}
 
 usage()
 {
@@ -592,6 +614,10 @@ case "$1" in
   ;;
   build)
     skyforge_cleanup $SKYFILE
+    #Full cleanup, just in case previous run was interrupted
+    skyforge_kill_chroot_processes
+    skyforge_bind_unmount
+    skyforge_unmount_rootfs
     skyforge_run_skyfile $SKYFILE
     echo "[I] Your rootfs is now forged!"
   ;;
