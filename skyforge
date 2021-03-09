@@ -85,6 +85,7 @@ skyforge_cleanup()
     else
         echo "Deleting $WORKDIR/$hash ($HASH_FOUND)"
         rm -rf $WORKDIR/$hash*
+        rm -rf $WORKDIR/.$hash*
     fi
   done
   echo "Initial cleanup complete"
@@ -212,7 +213,6 @@ skyforge_overlay_add_layer()
   fi
 
   echo "$STACK" > $WORKDIR/.stack
-  echo "$STACK"
   # mkdir -p $WORKDIR/.work
   mkdir -p $WORKDIR/.$CURRENT.data
   #mount -t overlay overlay -o \
