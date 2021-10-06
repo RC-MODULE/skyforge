@@ -1,0 +1,32 @@
+# This file shows a simple debian armel rootfs creation process
+#
+
+MULTISTRAP powerpc debian-base.conf
+#RUN DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true LC_ALL=C LANGUAGE=C LANG=C /var/lib/dpkg/info/dash.preinst install
+
+
+#HACK: Work-around broken base-files bootstrapping
+RUN "echo root:x:0:0:root:/root:/bin/bash | tee -a etc/passwd"
+RUN "echo root:x:0: | tee -a etc/group"
+RUN "echo mail:x:8: | tee -a etc/group"
+RUN "echo utmp:x:43: | tee -a etc/group"
+RUN "echo nogroup:x:65534: | tee -a etc/group"
+
+#HACK: Workaround broken remove-on-upgrade
+RUN sed -i '/remove-on-upgrade/d' var/lib/dpkg/status
+
+DPKG_CONFIGURE noninteractive
+#Enable root access over ssh
+RUN "echo PermitRootLogin yes | tee -a etc/ssh/sshd_config"
+
+#Basic system setup
+PASSWD 12345678
+HOSTNAME bugfield
+LOCALE en_US.UTF-8 UTF-8
+IFACE_DHCP eth0
+
+#Enable root access over ssh
+RUN sed "'s/PermitRootLogin without-password/PermitRootLogin yes/'" -i etc/ssh/sshd_config
+
+#Package a rootfs tarball
+STORE rootfs.tgz
