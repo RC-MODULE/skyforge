@@ -326,6 +326,16 @@ ADD cross-compiler.tgz /opt
 Mark filename as a build artifact. The only effect this has - this file will be
 removed when you run skyforge purge
 
+## `EXT4IMAGE filename.img`
+
+Store the rootfs into an ext4 image. The resulting image is NOT an SD card image. 
+You'll need to create a partition table and `dd` the resulting image to a partition
+## `EXT3IMAGE filename.img`
+
+Same as the above, but with ext3 filesystem
+## `EXT2IMAGE filename.img`
+
+Same as the above, but with ext2 filesystem
 # A complete Skyfile Example
 
 ```

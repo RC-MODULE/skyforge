@@ -573,8 +573,10 @@ ADD_DEB()
 
 makefsimage()
 {
-  NAME=$2
-  SIZE=$1
+  NAME=$1
+  SIZE=$(du -sk ./rootfs | awk '{print $1 }')
+  #Adjust overhead for 30% free space
+  SIZE=$(((SIZE)*1024*13/10))
   shift
   shift
   fallocate -l $SIZE $NAME
@@ -585,6 +587,7 @@ makefsimage()
   cd rootfs && tar cpf - . | tar xpf - -C ../$NAME.mount; cd ..
   umount $NAME.mount
   rmdir $NAME.mount
+  ARTIFACT $NAME
 }
 
 EXT4IMAGE()
